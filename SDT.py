@@ -62,7 +62,7 @@ class SDT(nn.Module):
         _path_prob = _path_prob.view(batch_size, 2**(layer_idx+1))
         for node in range(0, 2**(layer_idx+1)):
             alpha = torch.sum(_path_prob[:, node]*_mu[:,node//2], dim=0) / torch.sum(_mu[:,node//2], dim=0)
-            penalty -= - self.penalty_list[layer_idx] * 0.5 * (torch.log(alpha) + torch.log(1-alpha))
+            penalty -= self.penalty_list[layer_idx] * 0.5 * (torch.log(alpha) + torch.log(1-alpha))
         return penalty
     
     """ Add constant 1 onto the front of each instance """
