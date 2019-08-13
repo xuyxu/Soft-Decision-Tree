@@ -27,9 +27,9 @@ class SDT(nn.Module):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=self.args['lr'], weight_decay=self.args['weight_decay'])
     
     def forward(self, data):
-        _mu, _ = self._forward(data)
+        _mu, _penalty = self._forward(data)
         output = self.leaf_nodes(_mu)
-        return output  
+        return output, _penalty 
     
     """ Core implementation on data forwarding in SDT """
     def _forward(self, data):

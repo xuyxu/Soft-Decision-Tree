@@ -59,10 +59,11 @@ if __name__ == '__main__':
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(device), target.to(device)
             target_onehot = onehot_coding(target, device, learner_args['output_dim'])
-            output = tree.forward(data)
+            output, penalty = tree.forward(data)
             
             tree.optimizer.zero_grad()
             loss = criterion(output, target.view(-1))
+            loss += penalty
             loss.backward()
             tree.optimizer.step()
             
@@ -82,7 +83,7 @@ if __name__ == '__main__':
         for batch_idx, (data, target) in enumerate(test_loader):
             data, target = data.to(device), target.to(device)
             batch_size = data.size()[0]
-            output = tree.forward(data)
+            output, _ = tree.forward(data)
             pred = output.data.max(1)[1]
             correct += pred.eq(target.view(-1).data).sum()
         accuracy = 100. * float(correct) / len(test_loader.dataset)
