@@ -1,11 +1,50 @@
-""" A fast implementation of soft decision tree. """
-
 import torch
 import torch.nn as nn
 
 
 class SDT(nn.Module):
+    """ Fast implementation of soft decision tree using PyTorch.
+
+    Parameters
+    ----------
+    input_dim : int
+      The number of input dimensions, which is necessary to initialize the 
+      entire model.
+    output_dim : int
+      The number of output dimensions. For example, for multi-class 
+      classification problem with `K` classes, it is set to `K`.
+    depth : int, default=5
+      The depth of the soft decision tree. Since the soft decision tree is
+      a full binary tree, setting `depth` to a large value drastically 
+      increases the training and evaluating costs.
+    lamda : float, default=1e-3
+      The coefficient of the regularization term in the training loss. Please
+      see the original paper for details on the regularization term.
+    use_cuda : bool, default=False
+      When set to `True`, use GPU to fit the model. Training a soft decision
+      tree using CPU can be faster considering the inherent data forwarding
+      process.
     
+    Attributes
+    ----------
+    internal_node_num_ : int
+      The number of internal nodes in the tree. Given the tree depth `d`, it
+      equals to $2^d - 1$.
+    leaf_node_num_ : int
+      The number of leaf nodes in the tree. Given the tree depth `d`, it equals
+      to $2^d$.
+    penalty_list : list
+      A Python list that stores the layer-wise coefficients of the 
+      regularization term. 
+    inner_nodes : nn.Sequential
+      A container that simulates all internal nodes in the soft decision tree.
+      The sigmoid activation function is concatenated to simulate the 
+      probabilistic routing mechanism.
+    leaf_nodes : nn.Linear
+      A `nn.Linear` layer that simulates all leaf nodes in the soft decision
+      tree.
+    """
+
     def __init__(self,
                  input_dim,
                  output_dim,
@@ -44,7 +83,7 @@ class SDT(nn.Module):
         y_pred = self.leaf_nodes(_mu)
         
         # When `X` is the training data, the model also returns the penalty
-        # for computing the training loss.
+        # to compute the training loss.
         if is_training_data:
             return y_pred, _penalty 
         else:
@@ -67,7 +106,7 @@ class SDT(nn.Module):
         _mu = X.data.new(batch_size,1,1).fill_(1.)
         _penalty = torch.tensor(0.).to(self.device)
         
-        # Iterate through nodes in each layer to compute the final path 
+        # Iterate through internal odes in each layer to compute the final path 
         # probabilities and the regularization term.
         begin_idx = 0
         end_idx = 1
@@ -111,7 +150,9 @@ class SDT(nn.Module):
         
         return penalty
     
-    """ Add a constant input `1` onto the front of each instance. """
+    """ 
+      Add a constant input `1` onto the front of each instance. 
+    """
     def _data_augment(self, X):
         batch_size = X.size()[0]
         X = X.view(batch_size, -1)
