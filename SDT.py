@@ -1,74 +1,124 @@
-# -*- coding: utf-8 -*-
+""" A fast implementation of soft decision tree. """
 
 import torch
 import torch.nn as nn
-from collections import OrderedDict
 
 
 class SDT(nn.Module):
     
-    def __init__(self, args):
+    def __init__(self,
+                 input_dim,
+                 output_dim,
+                 depth=5, 
+                 lamda=1e-3,
+                 use_cuda=False):
         super(SDT, self).__init__()
-        self.args = args
-        self.device = torch.device('cuda' if self.args['cuda'] else 'cpu')
-        self.inner_node_num = 2 ** self.args['depth'] - 1
-        self.leaf_num = 2 ** self.args['depth']
         
-        # Different penalty coefficients for nodes in different layer
-        self.penalty_list = [args['lamda'] * (2 ** (-depth)) for depth in range(0, self.args['depth'])] 
+        self.input_dim = input_dim
+        self.output_dim = output_dim
         
-        # Initialize inner nodes and leaf nodes (input dimension on innner nodes is added by 1, serving as bias)
-        self.inner_nodes = nn.Sequential(OrderedDict([
-                        ('linear', nn.Linear(self.args['input_dim']+1, self.inner_node_num, bias=False)),
-                        ('sigmoid', nn.Sigmoid()),
-                        ]))
-        self.leaf_nodes = nn.Linear(self.leaf_num, self.args['output_dim'], bias=False)
+        self.depth = depth
+        self.lamda = lamda
+        self.device = torch.device('cuda' if use_cuda else 'cpu')
         
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=self.args['lr'], weight_decay=self.args['weight_decay'])
+        self.internal_node_num_ = 2 ** self.depth - 1
+        self.leaf_node_num_ = 2 ** self.depth
+        
+        # Different penalty coefficients for nodes in different layers
+        self.penalty_list = [self.lamda * (2 ** (-depth)) 
+                             for depth in range(0, self.depth)] 
+        
+        # Initialize internal nodes and leaf nodes, the input dimension on 
+        # internal nodes is added by 1, serving as the bias.
+        self.inner_nodes = nn.Sequential(
+            nn.Linear(self.input_dim + 1, 
+                      self.internal_node_num_, bias=False),
+            nn.Sigmoid())
+        
+        self.leaf_nodes = nn.Linear(self.leaf_node_num_, 
+                                    self.output_dim, bias=False)
     
-    def forward(self, data):
-        _mu, _penalty = self._forward(data)
-        output = self.leaf_nodes(_mu)
-        return output, _penalty 
+    def forward(self, X, is_training_data=False):
+        
+        _mu, _penalty = self._forward(X)
+        y_pred = self.leaf_nodes(_mu)
+        
+        # When `X` is the training data, the model also returns the penalty
+        # for computing the training loss.
+        if is_training_data:
+            return y_pred, _penalty 
+        else:
+            return y_pred
     
-    """ Core implementation on data forwarding in SDT """
-    def _forward(self, data):
-        batch_size = data.size()[0]
-        data = self._data_augment_(data)
-        path_prob = self.inner_nodes(data)
+    """ 
+      Implementation on the data forwarding process in the soft decision tree. 
+    """
+    def _forward(self, X):
+        
+        batch_size = X.size()[0]
+        self._validate_parameters()
+        
+        X = self._data_augment(X)
+        
+        path_prob = self.inner_nodes(X)
         path_prob = torch.unsqueeze(path_prob, dim=2)
         path_prob = torch.cat((path_prob, 1-path_prob), dim=2)
-        _mu = data.data.new(batch_size,1,1).fill_(1.)
+        
+        _mu = X.data.new(batch_size,1,1).fill_(1.)
         _penalty = torch.tensor(0.).to(self.device)
         
+        # Iterate through nodes in each layer to compute the final path 
+        # probabilities and the regularization term.
         begin_idx = 0
         end_idx = 1
         
-        for layer_idx in range(0, self.args['depth']):
+        for layer_idx in range(0, self.depth):
             _path_prob = path_prob[:, begin_idx:end_idx, :]
-            _penalty= _penalty + self._cal_penalty(layer_idx, _mu, _path_prob)  # extract inner nodes in current layer to calculate regularization term
+            
+            # Extract internal nodes in the current layer to compute the 
+            # regularization term
+            _penalty = _penalty + self._cal_penalty(layer_idx, _mu, _path_prob)
             _mu = _mu.view(batch_size, -1, 1).repeat(1, 1, 2)
-            _mu = _mu * _path_prob
+            
+            _mu = _mu * _path_prob  # update path probabilities
+            
             begin_idx = end_idx
             end_idx = begin_idx + 2 ** (layer_idx+1)
-        mu = _mu.view(batch_size, self.leaf_num)
+        
+        mu = _mu.view(batch_size, self.leaf_node_num_)
+        
         return mu, _penalty          
     
-    """ Calculate penalty term for inner-nodes in different layer """
+    """ 
+      Compute the regularization term for internal nodes in different layers. 
+    """
     def _cal_penalty(self, layer_idx, _mu, _path_prob):
-        penalty = torch.tensor(0.).to(self.device)     
+        
+        penalty = torch.tensor(0.).to(self.device)   
+        
         batch_size = _mu.size()[0]
         _mu = _mu.view(batch_size, 2**layer_idx)
         _path_prob = _path_prob.view(batch_size, 2**(layer_idx+1))
+        
         for node in range(0, 2**(layer_idx+1)):
-            alpha = torch.sum(_path_prob[:, node]*_mu[:,node//2], dim=0) / torch.sum(_mu[:,node//2], dim=0)
-            penalty -= self.penalty_list[layer_idx] * 0.5 * (torch.log(alpha) + torch.log(1-alpha))
+            alpha = (torch.sum(_path_prob[:, node] * _mu[:, node//2], dim=0) / 
+                     torch.sum(_mu[:, node//2], dim=0))
+            
+            layer_penalty_coeff = self.penalty_list[layer_idx]
+            
+            penalty -= 0.5 * layer_penalty_coeff * (torch.log(alpha) + 
+                                                    torch.log(1-alpha))
+        
         return penalty
     
-    """ Add constant 1 onto the front of each instance """
-    def _data_augment_(self, input):
-        batch_size = input.size()[0]
-        input = input.view(batch_size, -1)
+    """ Add a constant input `1` onto the front of each instance. """
+    def _data_augment(self, X):
+        batch_size = X.size()[0]
+        X = X.view(batch_size, -1)
         bias = torch.ones(batch_size, 1).to(self.device)
-        input = torch.cat((bias, input), 1)
-        return input
+        X = torch.cat((bias, X), 1)
+        
+        return X
+    
+    def _validate_parameters(self):
+        pass
