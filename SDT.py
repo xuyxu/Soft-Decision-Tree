@@ -59,6 +59,8 @@ class SDT(nn.Module):
         self.lamda = lamda
         self.device = torch.device('cuda' if use_cuda else 'cpu')
         
+        self._validate_parameters()
+        
         self.internal_node_num_ = 2 ** self.depth - 1
         self.leaf_node_num_ = 2 ** self.depth
         
@@ -94,7 +96,6 @@ class SDT(nn.Module):
     def _forward(self, X):
         
         batch_size = X.size()[0]
-        self._validate_parameters()
         
         X = self._data_augment(X)
         
