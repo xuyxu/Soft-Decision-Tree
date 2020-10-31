@@ -8,10 +8,9 @@ class SDT(nn.Module):
     Parameters
     ----------
     input_dim : int
-      The number of input dimensions, which is necessary to initialize the 
-      entire model.
+      The number of input dimensions.
     output_dim : int
-      The number of output dimensions. For example, for multi-class 
+      The number of output dimensions. For example, for a multi-class 
       classification problem with `K` classes, it is set to `K`.
     depth : int, default=5
       The depth of the soft decision tree. Since the soft decision tree is
@@ -19,7 +18,7 @@ class SDT(nn.Module):
       increases the training and evaluating costs.
     lamda : float, default=1e-3
       The coefficient of the regularization term in the training loss. Please
-      see the original paper for details on the regularization term.
+      see the original paper for detailed design on the regularization term.
     use_cuda : bool, default=False
       When set to `True`, use GPU to fit the model. Training a soft decision
       tree using CPU can be faster considering the inherent data forwarding
@@ -41,7 +40,7 @@ class SDT(nn.Module):
       The sigmoid activation function is concatenated to simulate the 
       probabilistic routing mechanism.
     leaf_nodes : nn.Linear
-      A `nn.Linear` layer that simulates all leaf nodes in the soft decision
+      A `nn.Linear` module that simulates all leaf nodes in the soft decision
       tree.
     """
 
@@ -162,4 +161,12 @@ class SDT(nn.Module):
         return X
     
     def _validate_parameters(self):
-        pass
+        
+        if not self.depth > 0:
+          msg = 'The tree depth should be strictly positive, but got {} instead.'
+          raise ValueError(msg.format(self.depth))
+
+        if not self.lamda >= 0:
+          msg = ('The coefficient of the regularization term should not be' 
+                 ' negative, but got {} instead.')
+          raise ValueError(msg.format(self.lamda))
