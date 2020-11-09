@@ -86,7 +86,7 @@ if __name__ == '__main__':
             
             # Print training status
             if batch_idx % log_interval == 0:
-                pred = F.softmax(output.data.max(1)[1], dim=1)
+                pred = output.data.max(1)[1]
                 correct = pred.eq(target.view(-1).data).sum()
                 
                 msg = ('Epoch: {:02d} | Batch: {:03d} | Loss: {:.5f} |'
@@ -113,7 +113,7 @@ if __name__ == '__main__':
         if accuracy > best_testing_acc:
             best_testing_acc = accuracy
         
-        msg = ('\nEpoch: {:02d} | Testing Accuracy: {:03d}/{:03d} ({:.3f}%) |'
+        msg = ('\nEpoch: {:02d} | Testing Accuracy: {}/{} ({:.3f}%) |'
                ' Historical Best: {:.3f}%\n')
         print(msg.format(epoch, correct, len(test_loader.dataset),
                          accuracy, best_testing_acc))
