@@ -1,5 +1,6 @@
 """Training and evaluating a soft decision tree on the MNIST dataset."""
 
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -20,7 +21,7 @@ if __name__ == "__main__":
 
     # Parameters
     input_dim = 28 * 28    # the number of input dimensions
-    output_dim = 10        # the number of outputs (i.e., # classes on MNIST)
+    output_dim = 2        # the number of outputs (i.e., # classes on MNIST)
     depth = 5              # tree depth
     lamda = 1e-3           # coefficient of the regularization term
     lr = 1e-3              # learning rate
@@ -28,7 +29,7 @@ if __name__ == "__main__":
     batch_size = 128       # batch size
     epochs = 50            # the number of training epochs
     log_interval = 100     # the number of batches to wait before printing logs
-    use_cuda = False       # whether to use GPU
+    use_cuda = True       # whether to use GPU
 
     # Model and Optimizer
     tree = SDT(input_dim, output_dim, depth, lamda, use_cuda)
@@ -67,6 +68,8 @@ if __name__ == "__main__":
     training_loss_list = []
     criterion = nn.CrossEntropyLoss()
     device = torch.device("cuda" if use_cuda else "cpu")
+
+    tree.to(device)
 
     for epoch in range(epochs):
 
@@ -131,3 +134,31 @@ if __name__ == "__main__":
             )
         )
         testing_acc_list.append(accuracy)
+
+    # Load a batch of data from the test_loader or train_loader
+    data_iter = iter(test_loader)
+    X, _ = next(data_iter)  # Only fetch the inputs (ignore the targets)
+
+    # Move the data to the correct device
+    # Flatten the images and move to the device
+    X = X.view(-1, input_dim).to(device)
+
+    # Compute the Neural Feature Map for this batch of data
+    nfm = tree.compute_nfm(X)
+
+    # Now `nfm` contains the feature importances, which you can print or analyze further
+    print(nfm)
+
+    # For example, you could visualize the average NFM across all features
+
+    # Assuming nfm is a 2D array where the first dimension is the batch size
+    avg_nfm = nfm.mean(axis=0)  # Average over all samples in the batch
+
+    # Reshape to the original image size if necessary (e.g., for MNIST 28x28)
+    avg_nfm = avg_nfm.reshape(28, 28)
+
+    # Plot the average NFM
+    plt.imshow(avg_nfm, cmap='hot', interpolation='nearest')
+    plt.colorbar()
+    plt.title('Neural Feature Map')
+    plt.show()

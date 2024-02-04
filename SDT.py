@@ -79,51 +79,54 @@ class SDT(nn.Module):
                                     self.output_dim,
                                     bias=False)
 
+
     def forward(self, X, is_training_data=False):
+        # Performs a forward pass through the model, deciding whether to include regularization penalty based on the context (training or evaluation)
         _mu, _penalty = self._forward(X)
+        # Generates predictions based on the final path probabilities
         y_pred = self.leaf_nodes(_mu)
 
-        # When `X` is the training data, the model also returns the penalty
-        # to compute the training loss.
         if is_training_data:
-            return y_pred, _penalty
+            return y_pred, _penalty  # Returns predictions and penalty for training
         else:
-            return y_pred
+            return y_pred  # Returns only predictions for evaluation
+
 
     def _forward(self, X):
-        """Implementation on the data forwarding process."""
-
+        # Core implementation of the forward pass, calculating path probabilities through the tree and regularization penalty
         batch_size = X.size()[0]
-        X = self._data_augment(X)
+        X = self._data_augment(X)  # Augments data with a bias term for each sample
 
+        # Calculates initial routing probabilities using internal nodes
         path_prob = self.inner_nodes(X)
         path_prob = torch.unsqueeze(path_prob, dim=2)
+        # Splits probabilities for left and right routing
         path_prob = torch.cat((path_prob, 1 - path_prob), dim=2)
 
+        # Initializes path probabilities to 1 for all samples
         _mu = X.data.new(batch_size, 1, 1).fill_(1.0)
+        # Initializes regularization penalty
         _penalty = torch.tensor(0.0).to(self.device)
 
-        # Iterate through internal odes in each layer to compute the final path
-        # probabilities and the regularization term.
         begin_idx = 0
         end_idx = 1
 
+        # Iterates through layers, updating path probabilities and penalties
         for layer_idx in range(0, self.depth):
             _path_prob = path_prob[:, begin_idx:end_idx, :]
 
-            # Extract internal nodes in the current layer to compute the
-            # regularization term
-            _penalty = _penalty + self._cal_penalty(layer_idx, _mu, _path_prob)
+            # Updates penalty based on current layer's paths
+            _penalty += self._cal_penalty(layer_idx, _mu, _path_prob)
             _mu = _mu.view(batch_size, -1, 1).repeat(1, 1, 2)
-
-            _mu = _mu * _path_prob  # update path probabilities
+            _mu *= _path_prob  # Updates path probabilities based on current decisions
 
             begin_idx = end_idx
             end_idx = begin_idx + 2 ** (layer_idx + 1)
 
+        # Finalizes path probabilities for leaf nodes
         mu = _mu.view(batch_size, self.leaf_node_num_)
 
-        return mu, _penalty
+        return mu, _penalty  # Returns final path probabilities and total penalty
 
     def _cal_penalty(self, layer_idx, _mu, _path_prob):
         """
@@ -169,3 +172,73 @@ class SDT(nn.Module):
                 " negative, but got {} instead."
             )
             raise ValueError(msg.format(self.lamda))
+
+    def compute_nfm(self, X):
+        # Ensure model is in evaluation mode for consistent output
+        self.eval()
+
+        # We need to enable gradients for input for NFM computation
+        X.requires_grad_(True)
+
+        # Forward pass through the model
+        mu, penalty = self._forward(X)
+        y_pred = self.leaf_nodes(mu)
+
+        # Initialize NFM as a zero tensor with the same size as the input
+        nfm = torch.zeros_like(X)
+
+        # Compute gradients for each output dimension
+        for i in range(self.output_dim):
+            self.zero_grad()  # Clear existing gradients
+            # Backpropagate from each output dimension
+            y_pred[:, i].sum().backward(retain_graph=True)
+
+            # Sum gradients for each feature across all samples
+            nfm += X.grad.data
+
+        # Divide by the number of output dimensions to get the average influence
+        nfm /= self.output_dim
+
+        # Detach the NFM from the current graph to prevent further gradient computation
+        nfm = nfm.detach()
+
+        # Turn off gradients for input
+        X.requires_grad_(False)
+
+        return nfm.numpy()  # Return NFM as a NumPy array for analysis
+
+    def compute_nfm_for_target(model, data_loader, target_class, device):
+        """
+        Compute the Neural Feature Map (NFM) for a specific target class.
+
+        Args:
+            model: The Soft Decision Tree model.
+            data_loader: DataLoader providing the dataset.
+            target_class: The target class for which to compute the NFM.
+            device: The device (CPU or CUDA) on which to perform computations.
+
+        Returns:
+            A tensor representing the NFM for the specified target class.
+        """
+        model.eval()  # Set the model to evaluation mode
+        feature_contributions = []  # List to store feature contributions
+
+        for data, targets in data_loader:
+            data, targets = data.to(device), targets.to(device)
+            data = data.view(data.size(0), -1)  # Flatten the data if necessary
+
+            # Forward pass through the model to get the paths and predictions
+            # Assuming model.forward() has been modified to return paths or contributions
+            output, paths = model.forward(data, return_paths=True)
+
+            # Filter paths for the specific target_class
+            for i in range(len(data)):
+                if targets[i] == target_class:
+                    # Assuming `paths` contains contribution info per input
+                    # Modify as per your implementation
+                    feature_contributions.append(paths[i])
+
+        # Aggregate feature contributions across all filtered instances
+        nfm = torch.mean(torch.stack(feature_contributions), dim=0)
+
+        return nfm
