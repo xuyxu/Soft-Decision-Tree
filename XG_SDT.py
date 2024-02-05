@@ -1,12 +1,22 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
+from SDT import SDT
 
 
 class XG_SDT:
 
-    def __init__(self, n_trees: int, lr: float = 0.01) -> None:
-        pass
+    def __init__(self, n_trees: int = 3, lr: float = 0.01, internal_lr: float = 0.01) -> None:
+        self.n_trees = n_trees
+        self.lr = lr
+        self.internal_lr = internal_lr
+
+    def train_tree(self, X_train, y_train):
+        tree = SDT(input_dim, output_dim, depth, lamda, use_cuda)
+
+        optimizer = torch.optim.Adam(tree.parameters(),
+                                     lr=self.internal_lr,
+                                     weight_decay=weight_decaly)
 
     def train(self, X_train, y_train):
         # Assume `X_train` and `y_train` are your training data and labels, respectively
@@ -14,7 +24,7 @@ class XG_SDT:
         # `learning_rate` is the learning rate for the gradient boosting process
 
         # train initial tree on actual labels
-        ensemble_predictions = initial_predictions(X_train, y_train)
+        ensemble_predictions = self.train_tree(X_train, y_train)
 
         for tree_num in range(self.n_trees):
             # Compute pseudo-residuals as gradients (with cross-entropy it is residuals)

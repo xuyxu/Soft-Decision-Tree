@@ -25,7 +25,7 @@ if __name__ == "__main__":
     depth = 5              # tree depth
     lamda = 1e-3           # coefficient of the regularization term
     lr = 1e-3              # learning rate
-    weight_decaly = 5e-4   # weight decay
+    weight_decay = 5e-4   # weight decay
     batch_size = 128       # batch size
     epochs = 50            # the number of training epochs
     log_interval = 100     # the number of batches to wait before printing logs
@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     optimizer = torch.optim.Adam(tree.parameters(),
                                  lr=lr,
-                                 weight_decay=weight_decaly)
+                                 weight_decay=weight_decay)
 
     # Load data
     data_dir = "../Dataset/mnist"
