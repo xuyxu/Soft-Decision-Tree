@@ -1,41 +1,78 @@
-## Introduction 
-This is the pytorch implementation on Soft Decision Tree (SDT), appearing in the paper "Distilling a Neural Network Into a Soft Decision Tree". 2017 (https://arxiv.org/abs/1711.09784).
+# MNIST Classification with Soft Decision Trees
 
-## Quick Start 
-To run the demo on MNIST, simply use the following commands:
+This repository provides an implementation of two machine learning models for classifying the MNIST dataset: a Soft Decision Tree (SDT) and a Gradient Boosted Soft Decision Tree (GB_SDT). The goal of these models is to demonstrate the effectiveness of decision tree-based approaches in image classification tasks, particularly using the MNIST dataset.
+
+## Getting Started
+
+### Prerequisites
+
+Before you begin, ensure you have met the following requirements:
+
+- Python 3.6 or later
+- PyTorch
+- torchvision
+- numpy
+
+These dependencies can be installed using the `requirements.txt` file included in the repository.
+
+### Installation
+
+To install the necessary packages, follow these steps:
+
+1. Clone the repository:
+
+```bash
+git clone https://your-repository-url.git
+cd your-repository-directory
 ```
-git clone https://github.com/AaronX121/Soft-Decision-Tree.git
-cd Soft-Decision-Tree
-python main.py
-``` 
 
-## Parameters
+2. Install the relevant python version in .python-version
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| input_dim | int  | The number of input dimensions |
-| output_dim | int| The number of output dimensions (e.g., the number of classes for multi-class classification) |
-| depth | int| Tree depth, the default is `5` |
-| lamda | float | The coefficient of the regularization term, the default is `1e-3` |
-| use_cuda | bool | Whether use GPU to train / evaluate the model, the default is `False` |
+3. Install the requirements.txt
+
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+Train the Soft Decision Tree (SDT) model:
+
+```bash
+python sdt_train.py --data_dir ./data/mnist --epochs 50 --batch_size 128
+```
+
+Train the Gradient Boosted Soft Decision Tree (GB_SDT) model:
+
+```bash
+python gb_sdt_train.py --epochs 50 --batch_size 128 --n_trees 4 --depth 5
+```
+
+For more options and customization, refer to the help of each script:
+
+```bash
+python sdt_train.py --help
+python gb_sdt_train.py --help
+```
 
 ## Frequently Asked Questions
-* **Training loss suddenly turns into NAN**
-    * **Reason:** Sigmoid function used in internal nodes of SDT can be unstable during the training stage, as its gradient is much close to `0` when the absolute value of input is large.
-    * **Solution:** Using a smaller learning rate typically works.
-* **Exact training time**
-    * **Setup:** MNIST Dataset | Tree Depth: 5 | Epoch: 40 | Batch Size: 128
-    * **Results:** Around 15 minutes on a single RTX-2080ti
+
+- **Training loss suddenly turns into NAN**
+  - **Reason:** Sigmoid function used in internal nodes of SDT can be unstable during the training stage, as its gradient is much close to `0` when the absolute value of input is large.
+  - **Solution:** Using a smaller learning rate typically works.
 
 ## Experiment Result on MNIST
-After training for 40 epochs with `batch_size` 128, the best testing accuracy using a SDT model of depth **5**, **7** are **94.15** and **94.38**, respectively (which is much close to the accuracy reported in raw paper). Related hyper-parameters are available in `main.py`. Better and more stable performance can be achieved by fine-tuning hyper-parameters. 
 
-Below are the testing accuracy curve and training loss curve. The testing accuracy of SDT is evaluated after each training epoch. 
+After training for 40 epochs with `batch_size` 128, the best testing accuracy using a SDT model of depth **5**, **7** are **94.15** and **94.38**, respectively (which is much close to the accuracy reported in raw paper). Related hyper-parameters are available in `main.py`. Better and more stable performance can be achieved by fine-tuning hyper-parameters.
+
+Below are the testing accuracy curve and training loss curve. The testing accuracy of SDT is evaluated after each training epoch.
 
 ![MNIST Experiment Result](./mnist_exp.png)
 
 ## Package Dependencies
-SDT is originally developed in `Python 3.6.5`. Following are the name and version of packages used in SDT. In my practice, it works fine under different versions of Python or PyTorch.
 
- - pytorch 0.4.1
- - torchvision 0.2.1
+This package is originally developed in `Python 3.11.5`. Following are the name and version of packages used in SDT and GB_SDT. In my practice, it works fine under different versions of Python or PyTorch.
+
+- torch 2.1.2
+- torchaudio 2.1.2
+- torchvision 0.16.2

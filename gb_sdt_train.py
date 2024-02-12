@@ -6,7 +6,15 @@ import argparse
 from GB_SDT import GB_SDT
 
 
-def evaluate(model, test_loader, device):
+def evaluate(model: GB_SDT, test_loader: DataLoader, device: torch.device):
+    """
+    Evaluates the GB_SDT model on a test dataset.
+
+    Args:
+        model (GB_SDT): The trained model to evaluate.
+        test_loader (DataLoader): DataLoader for the test dataset.
+        device (torch.device): The device (CPU or GPU) to perform the evaluation on.
+    """
     model.eval()  # Set model to evaluation mode
     correct = 0
     total = 0
@@ -22,6 +30,12 @@ def evaluate(model, test_loader, device):
 
 
 def main(args):
+    """
+    Main training function for GB_SDT model on MNIST.
+
+    Args:
+        args: Command-line arguments.
+    """
     # Parameters from args
     input_dim = 28 * 28  # For MNIST
     output_dim = 10  # Number of classes in MNIST

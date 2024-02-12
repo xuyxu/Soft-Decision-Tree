@@ -1,13 +1,50 @@
 import torch
 import torch.nn.functional as F
-import numpy as np
+from torch.utils.data import DataLoader
 from SDT import SDT
 import copy
 
 
 class GB_SDT:
+    """
+    Gradient Boosted Soft Decision Trees (GB_SDT) implementation.
+
+    This class implements an ensemble of soft decision trees using a gradient boosting approach.
+
+    Attributes:
+        input_dim (int): The number of input features.
+        output_dim (int): The number of outputs (e.g., classes for classification).
+        n_trees (int): The number of trees in the ensemble.
+        lr (float): Learning rate for the ensemble's weight updates.
+        internal_lr (float): Learning rate for training individual trees.
+        depth (int): The depth of each tree in the ensemble.
+        lamda (float): Regularization coefficient for tree training.
+        weight_decay (float): Weight decay (L2 penalty) coefficient.
+        epochs (int): Number of epochs to train each tree.
+        log_interval (int): How often to log training progress.
+        use_cuda (bool): Whether to use CUDA (GPU acceleration) if available.
+        device (torch.device): Computation device (CPU or CUDA).
+        trees (list): A list to store the trained trees.
+    """
+
     def __init__(self, input_dim: int, output_dim: int, n_trees: int = 3, lr: float = 0.001, internal_lr: float = 0.01,
                  depth: int = 4, lamda: float = 1e-3, weight_decay: float = 5e-4, epochs: int = 50, log_interval: int = 10, use_cuda: bool = False):
+        """
+        Initializes the Gradient Boosted Soft Decision Trees ensemble.
+
+        Parameters:
+            input_dim (int): Number of features in the input data.
+            output_dim (int): Number of target classes or output dimensions.
+            n_trees (int): Number of trees to include in the ensemble.
+            lr (float): Learning rate for ensemble optimization.
+            internal_lr (float): Learning rate for training individual trees.
+            depth (int): Depth of each decision tree.
+            lamda (float): Regularization coefficient for trees' training.
+            weight_decay (float): Coefficient for L2 regularization.
+            epochs (int): Number of training epochs for each tree.
+            log_interval (int): Interval for logging training progress.
+            use_cuda (bool): Flag indicating whether to use CUDA for training.
+        """
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.n_trees = n_trees
@@ -23,15 +60,27 @@ class GB_SDT:
             'cuda' if use_cuda and torch.cuda.is_available() else 'cpu')
         self.trees = []
 
-    def state_dict(self):
-        """Returns a dictionary containing a whole state of the ensemble."""
+    def state_dict(self) -> dict:
+        """
+        Returns the state of the ensemble as a dictionary.
+
+        This is useful for saving the model's state to a file.
+
+        Returns:
+            dict: A dictionary containing the state of each tree in the ensemble.
+        """
         ensemble_state = {}
         for idx, tree in enumerate(self.trees):
             ensemble_state[f'tree_{idx}'] = tree.state_dict()
         return ensemble_state
 
-    def load_state_dict(self, state_dict):
-        """Loads the model's state from a state_dict."""
+    def load_state_dict(self, state_dict: dict):
+        """
+        Loads the model's state from a state_dict, allowing model weights to be loaded.
+
+        Parameters:
+            state_dict (dict): A dictionary containing the state of the ensemble.
+        """
         for idx, tree_state in state_dict.items():
             # Assuming each tree is already instantiated and part of `self.trees`
             # You may need to adjust this if trees need to be instantiated here
@@ -40,16 +89,19 @@ class GB_SDT:
             new_tree.load_state_dict(tree_state)
             self.trees.append(new_tree)
 
-    def train_tree(self, train_loader, val_loader, test_loader, early_stopping_rounds=5, log_interval=100):
+    def train_tree(self, train_loader: DataLoader, val_loader: DataLoader, test_loader: DataLoader, early_stopping_rounds: int = 5, log_interval: int = 100) -> SDT:
         """
-        Train a single decision tree with early stopping on a validation set and logging at specified intervals.
+        Trains a single decision tree with early stopping on a validation set.
 
-        Args:
-            train_loader (DataLoader): DataLoader for training data.
-            val_loader (DataLoader): DataLoader for validation data.
-            epochs (int): Number of maximum epochs to train.
+        Parameters:
+            train_loader (DataLoader): DataLoader for the training dataset.
+            val_loader (DataLoader): DataLoader for the validation dataset.
+            test_loader (DataLoader): DataLoader for the test dataset.
             early_stopping_rounds (int): Number of rounds to stop after if no improvement in validation loss.
             log_interval (int): Number of batches to wait before logging training status.
+
+        Returns:
+            SDT: The trained soft decision tree model.
         """
         tree = SDT(self.input_dim, self.output_dim,
                    self.depth, self.lamda, self.use_cuda)
@@ -104,17 +156,18 @@ class GB_SDT:
 
         return tree
 
-    def evaluate(self, model, data_loader, criterion):
+    def evaluate(self, model: SDT, data_loader: DataLoader, criterion: torch.nn.Module) -> (float, float):
         """
-        Evaluate the model on a given dataset.
+        Evaluates the model on a given dataset.
 
-        Args:
-            model: The model to evaluate.
-            data_loader (DataLoader): DataLoader for the dataset to evaluate on.
-            criterion: Loss function to use for evaluation.
+        Parameters:
+            model (SDT): The model to evaluate.
+            data_loader (DataLoader): DataLoader for the dataset to evaluate.
+            criterion (torch.nn.Module): The loss function to use for evaluation.
 
         Returns:
-            A tuple containing the average loss and accuracy over the dataset.
+            float: Average loss over the dataset.
+            float: Accuracy percentage over the dataset.
         """
         model.eval()
         total_loss = 0.0
@@ -141,8 +194,16 @@ class GB_SDT:
             tree = self.train_tree(train_loader, val_loader, test_loader)
             self.trees.append(tree)
 
-    def predict(self, X):
-        # Aggregate predictions from all trees
+    def predict(self, X: torch.Tensor) -> torch.Tensor:
+        """
+        Makes predictions with the ensemble by aggregating predictions from all trees.
+
+        Parameters:
+            X (torch.Tensor): Input features tensor.
+
+        Returns:
+            torch.Tensor: Predicted probabilities for each class, as an average over all trees.
+        """
         X = X.to(self.device)
         ensemble_predictions = torch.zeros(
             X.size(0), self.output_dim).to(self.device)
@@ -154,25 +215,30 @@ class GB_SDT:
         return F.softmax(ensemble_predictions, dim=1)
 
     def set_train(self):
-        """Sets the module in training mode."""
+        """
+        Sets the ensemble to training mode.
+        """
         for tree in self.trees:
             tree.train()
         return self
 
     def eval(self):
-        for tree in self.trees:
-            tree.train()
-
-    def compute_gradients(self, predictions, true_labels):
         """
-        Compute the gradient of the cross-entropy loss with respect to the predictions.
+        Sets the ensemble to evaluation mode.
+        """
+        for tree in self.trees:
+            tree.train(False)
 
-        Args:
-        - predictions (torch.Tensor): The model's predicted probabilities for each class.
-        - true_labels (torch.Tensor): The actual labels in one-hot encoded format.
+    def compute_gradients(self, predictions: torch.Tensor, true_labels: torch.Tensor) -> torch.Tensor:
+        """
+        Computes gradients of the cross-entropy loss with respect to the predictions.
+
+        Parameters:
+            predictions (torch.Tensor): The model's predicted probabilities for each class.
+            true_labels (torch.Tensor): The actual labels for the data.
 
         Returns:
-        - gradients (torch.Tensor): The gradients of the loss with respect to the predictions.
+            torch.Tensor: The gradients of the loss with respect to the predictions.
         """
         # Assuming predictions are logits (unnormalized scores), use log_softmax to convert to log probabilities
         probs = F.softmax(predictions, dim=1)
