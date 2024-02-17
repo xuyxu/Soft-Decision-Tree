@@ -156,3 +156,73 @@ class SDT(nn.Module):
         if not self.lamda >= 0:
             raise ValueError(
                 f"The coefficient of the regularization term should not be negative, got {self.lamda} instead.")
+
+    def compute_nfm(self, X):
+        # Ensure model is in evaluation mode for consistent output
+        self.eval()
+
+        # We need to enable gradients for input for NFM computation
+        X.requires_grad_(True)
+
+        # Forward pass through the model
+        mu, penalty = self._forward(X)
+        y_pred = self.leaf_nodes(mu)
+
+        # Initialize NFM as a zero tensor with the same size as the input
+        nfm = torch.zeros_like(X)
+
+        # Compute gradients for each output dimension
+        for i in range(self.output_dim):
+            self.zero_grad()  # Clear existing gradients
+            # Backpropagate from each output dimension
+            y_pred[:, i].sum().backward(retain_graph=True)
+
+            # Sum gradients for each feature across all samples
+            nfm += X.grad.data
+
+        # Divide by the number of output dimensions to get the average influence
+        nfm /= self.output_dim
+
+        # Detach the NFM from the current graph to prevent further gradient computation
+        nfm = nfm.detach()
+
+        # Turn off gradients for input
+        X.requires_grad_(False)
+
+        return nfm.cpu().numpy()  # Return NFM as a NumPy array for analysis
+
+    def compute_nfm_for_target(model, data_loader, target_class, device):
+        """
+        Compute the Neural Feature Map (NFM) for a specific target class.
+
+        Args:
+            model: The Soft Decision Tree model.
+            data_loader: DataLoader providing the dataset.
+            target_class: The target class for which to compute the NFM.
+            device: The device (CPU or CUDA) on which to perform computations.
+
+        Returns:
+            A tensor representing the NFM for the specified target class.
+        """
+        model.eval()  # Set the model to evaluation mode
+        feature_contributions = []  # List to store feature contributions
+
+        for data, targets in data_loader:
+            data, targets = data.to(device), targets.to(device)
+            data = data.view(data.size(0), -1)  # Flatten the data if necessary
+
+            # Forward pass through the model to get the paths and predictions
+            # Assuming model.forward() has been modified to return paths or contributions
+            output, paths = model.forward(data, return_paths=True)
+
+            # Filter paths for the specific target_class
+            for i in range(len(data)):
+                if targets[i] == target_class:
+                    # Assuming `paths` contains contribution info per input
+                    # Modify as per your implementation
+                    feature_contributions.append(paths[i])
+
+        # Aggregate feature contributions across all filtered instances
+        nfm = torch.mean(torch.stack(feature_contributions), dim=0)
+
+        return nfm
