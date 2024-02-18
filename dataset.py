@@ -10,6 +10,13 @@ from numpy.linalg import norm
 import os
 
 
+def onehot_coding(target, output_dim):
+    """Convert class labels into one-hot encoded vectors."""
+    target_onehot = torch.zeros(output_dim)
+    target_onehot[target] = 1
+    return target_onehot
+
+
 def split(trainset: list, p: float = .8) -> tuple:
     """
     Splits the dataset into training and validation sets.
@@ -70,7 +77,10 @@ def celeba_subset(dataset: Dataset, feature_idx: int, num_samples: int = -1) -> 
         else:
             by_class[g] = [(ex, labelset[g])]
         if idx > num_samples:
+            print(idx)
+            print('bigger than numer of samples')
             break
+    print(len(by_class[0]))
     data = []
     if 1 in by_class:
         max_len = min(25000, len(by_class[1]))
@@ -102,25 +112,28 @@ def get_celeba(feature_idx: int, data_dir: str, batch_size: int, num_train: int 
          transforms.ToTensor()
          ])
 
-    trainset = torchvision.datasets.CelebA(root=celeba_path,
-                                           split='train',
-                                           transform=transform,
-                                           download=False)
+    trainset = datasets.CelebA(root=celeba_path,
+                               split='train',
+                               transform=transform,
+                               download=False)
+    print(len(trainset))
     trainset = celeba_subset(trainset, feature_idx, num_samples=num_train)
-    trainset, valset = split(trainset, p=0.2)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                              shuffle=True, num_workers=1)
+    print(len(trainset))
+    trainset, valset = split(trainset, p=0.8)
+    print(len(trainset))
+    trainloader = DataLoader(trainset, batch_size=batch_size,
+                             shuffle=True, num_workers=1)
 
-    valloader = torch.utils.data.DataLoader(valset, batch_size=batch_size,
-                                            shuffle=False, num_workers=1)
+    valloader = DataLoader(valset, batch_size=batch_size,
+                           shuffle=False, num_workers=1)
 
     testset = torchvision.datasets.CelebA(root=celeba_path,
                                           split='test',
                                           transform=transform,
                                           download=False)
     testset = celeba_subset(testset, feature_idx, num_samples=num_test)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
-                                             shuffle=False, num_workers=1)
+    testloader = DataLoader(testset, batch_size=batch_size,
+                            shuffle=False, num_workers=1)
 
     print("Train Size: ", len(trainset), "Val Size: ",
           len(valset), "Test Size: ", len(testset))
@@ -134,8 +147,9 @@ def download_mnist(data_dir):
     print("Downloaded MNIST dataset.")
 
 
-def get_mnist(data_dir, batch_size):
+def get_mnist(data_dir, batch_size, output_dims):
     """Prepare and load the MNIST dataset, downloading if necessary."""
+    print("Loading MNIST dataset")
     mnist_dir = os.path.join(data_dir, 'MNIST')
     if not os.path.exists(mnist_dir):
         download_mnist(data_dir)
@@ -145,18 +159,21 @@ def get_mnist(data_dir, batch_size):
     ])
 
     train_dataset = datasets.MNIST(
-        root=data_dir, train=True, download=True, transform=transformer)
+        root=data_dir, train=True, download=True, transform=transformer,
+        target_transform=lambda x: onehot_coding(x, output_dims))
     test_dataset = datasets.MNIST(
-        root=data_dir, train=False, download=True, transform=transformer)
+        root=data_dir, train=False, download=True, transform=transformer,
+        target_transform=lambda x: onehot_coding(x, output_dims))
 
-    trainset, valset = split(train_dataset, p=0.2)
-    train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                               shuffle=True, num_workers=1)
+    trainset, valset = split(train_dataset, p=0.8)
+    train_loader = DataLoader(trainset, batch_size=batch_size,
+                              shuffle=True, num_workers=1)
 
-    val_loader = torch.utils.data.DataLoader(valset, batch_size=batch_size,
-                                             shuffle=False, num_workers=1)
+    val_loader = DataLoader(valset, batch_size=batch_size,
+                            shuffle=False, num_workers=1)
     test_loader = DataLoader(
         test_dataset, batch_size=batch_size, shuffle=False)
+    print("Loaded MNIST")
     return train_loader, val_loader, test_loader
 
 

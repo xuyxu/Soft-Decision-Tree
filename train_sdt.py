@@ -8,23 +8,32 @@ from dataset import get_mnist, get_celeba, get_stl_star
 
 
 def train_and_evaluate(args):
+    if args.use_cuda and torch.cuda.is_available():
+        print('Using CUDA')
+    else:
+        print('Using CPU')
+
     device = torch.device(
         "cuda" if args.use_cuda and torch.cuda.is_available() else "cpu")
 
     # Load datasets
     if args.dataset == 'MNIST':
-        train_loader, val_loader, test_loader = get_mnist(
-            args.data_dir, args.batch_size)
         args.input_dim = 28 * 28  # MNIST images are 28x28
+        args.output_dim = 10
+        train_loader, val_loader, test_loader = get_mnist(
+            args.data_dir, args.batch_size, args.output_dim)
     elif args.dataset == 'CELEBA':
+        args.input_dim = 96 * 96 * 3  # CELEBA images dimensions
+        args.output_dim = 2
         train_loader, val_loader, test_loader = get_celeba(
             feature_idx=args.feature_idx, data_dir=args.data_dir,
-            batch_size=args.batch_size, num_train=50_000, num_test=5_000)
-        args.input_dim = 96 * 96 * 3  # CELEBA images dimensions
+            batch_size=args.batch_size, num_train=120_000, num_test=10_000)
+
     elif args.dataset == 'STL_STAR':
+        args.input_dim = 96 * 96 * 3  # STL_STAR image size
+        args.output_dim = 2
         train_loader, val_loader, test_loader = get_stl_star(
             data_dir=args.data_dir, batch_size=args.batch_size)
-        args.input_dim = 96 * 96 * 3  # STL_STAR image size
 
     # Initialize model
     tree = SDT(args.input_dim, args.output_dim, args.depth,
@@ -94,6 +103,7 @@ def train_and_evaluate(args):
     print(f'\nTest set: Epoch: {epoch} Accuracy: {correct}/{len(test_loader.dataset)} '
           f'({accuracy:.0f}%) Best: {best_testing_acc:.0f}%\n')
 
+    print(f'Saving model to: {args.save_model_path}')
     torch.save(tree.state_dict(), args.save_model_path)
 
 
@@ -129,7 +139,7 @@ if __name__ == "__main__":
     parser.add_argument('--save_model_path', type=str,
                         default='stl_star_model.pth', help='Path to save the trained model.')
     parser.add_argument('--use_cuda', action='store_true',
-                        default=True, help='Enable CUDA if available.')
+                        default=False, help='Enable CUDA if available.')
     args = parser.parse_args()
 
     train_and_evaluate(args)
