@@ -1,0 +1,226 @@
+
+html {
+  font: 15px/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (min-width: 30rem) {
+  html {
+    font-size: 18px;
+  }
+}
+
+
+body {
+  margin: 2rem 0 5rem;
+  color: #333;
+}
+
+.content {
+    margin: 2rem 0 5rem;
+    color: #333;
+    display: flex;
+    padding-left: 16px;
+    padding-right: 16px;
+    position: relative;
+    column-gap: 50px;
+}
+.side-heading{
+  font-size:28px;
+  line-height:35px;
+  font-weight:bold;
+}
+.emoji{
+  font-size:25px
+}
+.sidebar {
+  position: sticky;
+  display:flex;
+  border-right: 2px solid black;
+  height:400px;
+  top: 15px;
+  width: 225px;
+  padding-right:12px;
+  text-align:center;
+}
+.names{
+  line-height:24px;
+}
+.side-list{
+  display:flex;
+  flex-direction:column;
+  row-gap:15px;
+}
+.side-item{
+  display:flex;
+  column-gap:15px;
+  text-decoration:underline;
+  align-items:end;
+}
+.github-icon{
+  width:25px;
+  height:25px;
+}
+.school{
+
+}
+
+@media (min-width: 30rem) {
+  body {
+    margin-top: 5rem;
+  }
+}
+
+a {
+  color: #0074d9; /* From http://clrs.cc */
+  text-decoration: none;
+}
+
+a:hover, a:focus {
+  text-decoration: underline;
+}
+
+#footer a {
+  color: #808080; /* From http://clrs.cc */
+  text-decoration: none;
+}
+
+#footer a:hover, a:focus {
+  text-decoration: underline;
+}
+
+small {
+  color: #B0B0B0;
+  text-decoration: none;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  margin: 0 0 0.5rem -0.1rem /* align left edge */;
+  line-height: 1;
+  color: #111;
+  text-rendering: optimizeLegibility;
+}
+
+h1 {
+  font-size: 2.0rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 30rem) {
+  h1 {
+    font-size: 2.5rem;
+    margin-bottom: 3rem;
+  }
+}
+
+h1 a {
+  color: inherit;
+}
+
+h2 {
+  margin-top: 2rem;
+  font-size: 1.2rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (min-width: 30rem) {
+  h2 {
+    margin-top: 2.5rem;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+  }
+}
+
+h3 {
+  margin-top: 1.5rem;
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+h4, h5, h6 {
+  margin-top: 1.5rem;
+  font-size: 1rem;
+  font-style: italic;
+  font-weight: bold;
+}
+
+p, ul, ol, dl, table, pre, blockquote {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+ul, ol {
+  padding-left: 1.5rem;
+}
+
+dd {
+  margin-left: 1.5rem;
+}
+
+blockquote {
+  margin-left: 0;
+  margin-right: 0;
+  padding: .5rem 1rem;
+  border-left: .25rem solid #ccc;
+  color: #666;
+}
+
+blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+hr {
+  border: none;
+  margin: 1.5rem 0;
+  border-bottom: 1px solid #ccc;
+  position: relative;
+  top: -1px;
+}
+
+.container img, .container iframe {
+  max-width: 100%;
+}
+
+.container img {
+  margin: 0 auto;
+  display: block;
+}
+
+table {
+  width: 100%;
+  border: 1px solid #ccc;
+  border-collapse: collapse;
+}
+
+td, th {
+  padding: .25rem .5rem;
+  border: 1px solid #ccc;
+}
+
+pre, code {
+  font-family: inherit;
+  background-color: #eee;
+}
+
+pre {
+  padding: .5rem 1rem;
+  font-size: 0.8rem;
+}
+
+code {
+  padding: .1rem .25rem;
+}
+
+pre > code {
+  padding: 0;
+}
+
+.container {
+  width: 100%;
+  max-width: 50rem;
+  padding: 0 1rem;
+  // border-left:2px solid black
+}
+

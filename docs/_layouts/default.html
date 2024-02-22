@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="description" content="{{ site.description }}" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ site.title }}</title>
+    <link rel="stylesheet" href="css/main.css" />
+
+    {% if page.usemathjax %}
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        "HTML-CSS": {color: "blue"},
+      TeX: { equationNumbers: { autoNumber: "AMS" } }
+      });
+    </script>
+    <script
+      type="text/javascript"
+      async
+      src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
+    ></script>
+    {% endif %} {% include head.html %}
+  </head>
+  <body>
+    <div class="content">
+      <div class="sidebar">
+        <div>
+          <div class="side-heading">Learning With Soft Decision Trees 🌳</div>
+          <h3 class="names">Ethan Shapiro, Abels Seyoum, Carlos Monterosa</h3>
+
+          <div>
+            <p>DSC 180 Capstone Project Group</p>
+          </div>
+          <div class="side-list">
+            <div class="side-item">
+              <img src="./assets/github-mark.svg" class="github-icon" />
+              <div>Project Repository</div>
+            </div>
+            <div class="side-item">
+              <div class="emoji">🏫</div>
+              <div class="school">UC San Diego</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="container">{{ content }}</div>
+    </div>
+    {% include scripts.html %}
+  </body>
+</html>
